@@ -1,0 +1,171 @@
+# Annotations pour des messages de Cyberharcèlement
+
+Annotation des émotions dans [ce corpus](https://github.com/aollagnier/CyberAgression-Large) de messages de cyberharcèlement (11-18 ans, français) via différents LLMs.
+
+## Architecture
+
+```
+Annotation/
+├── data/                          # Fichiers XLSX sources
+├── scripts/
+│   ├── annotate.py                # Annotation LLM (CLI)
+│   ├── aggregate.py               # Agrégation SitEmo → 19 labels EMOTYC (CLI)
+│   ├── flatten_gold.py            # Aplatissement gold label supervisé (CLI)
+│   ├── emotyc_predict.py          # Inférence EMOTYC + comparaison (CLI)
+│   ├── compare.py                 # Comparaison inter-runs (CLI)
+│   └── supervise.py               # Supervision manuelle (Argilla)
+├── src/cyberagg_llm_annot/        # Bibliothèque interne
+│   ├── llm_providers.py           # Providers LLM (Bedrock, Gemini, HF)
+│   ├── prompt_utils.py            # Prompts et taxonomy
+│   ├── runner.py                  # Boucle d'annotation + persistance
+│   ├── context.py                 # Fenêtre contextuelle
+│   ├── parsing.py                 # Parsing annotations experts
+│   └── io_utils.py                # I/O fichiers
+├── outputs/                       # Résultats (.jsonl, .xlsx)
+├── notebooks/                     # Notebooks d'orchestration
+└── requirements.txt
+```
+
+## Installation
+
+```bash
+git clone https://github.com/GwenONERA/a && cd Annotation
+pip install -r requirements.txt
+```
+
+## Providers LLM supportés
+
+| Provider | Modèles | Environnement |
+|---|---|---|
+| **AWS Bedrock** | `claude-sonnet-4-6`, `claude-opus-4-6`, `mistral-pixtral` | AWS credentials |
+| **Google Gemini** | `gemini-flash` | Google Colab uniquement |
+| **HuggingFace** | `deepseek-ai/DeepSeek-V3.2:novita`, etc. | Token `HF_TOKEN` |
+
+## Utilisation
+
+### 1. Annotation
+
+```bash
+# Bedrock Claude (défaut)
+python scripts/annotate.py \
+    --xlsx data/homophobie_scenario_julie.xlsx \
+    --thematique homophobie \
+    --run_id homophobie_run001
+
+# Bedrock Mistral Pixtral
+python scripts/annotate.py \
+    --xlsx data/mon_fichier.xlsx \
+    --thematique homophobie \
+    --run_id run_pixtral \
+    --model mistral-pixtral
+
+# HuggingFace DeepSeek
+python scripts/annotate.py \
+    --xlsx data/mon_fichier.xlsx \
+    --thematique racisme \
+    --run_id run_deepseek \
+    --model_provider huggingface \
+    --model "deepseek-ai/DeepSeek-V3.2:novita"
+
+# Gemini Flash (Colab)
+python scripts/annotate.py \
+    --xlsx data/mon_fichier.xlsx \
+    --thematique homophobie \
+    --run_id run_gemini \
+    --model_provider gemini
+
+# Avec annotations d'experts
+python scripts/annotate.py \
+    --xlsx data/mon_fichier.xlsx \
+    --thematique homophobie \
+    --run_id run002 \
+    --use_annotations
+```
+
+### 2. Comparaison inter-runs
+
+```bash
+python scripts/compare.py \
+    --run1 outputs/homophobie/homophobie_run001.jsonl \
+    --run2 outputs/homophobie/homophobie_run002.jsonl \
+    --xlsx data/homophobie_scenario_julie.xlsx \
+    --label_run1 "avec experts" \
+    --label_run2 "sans experts"
+```
+
+### 3. Supervision manuelle (Argilla)
+
+```python
+%run scripts/supervise.py \
+    --run1 outputs/homophobie/run001.jsonl \
+    --run2 outputs/homophobie/run002.jsonl \
+    --xlsx data/homophobie_scenario_julie.xlsx
+```
+
+### 4. Évaluation EMOTYC
+
+Deux pipelines mènent à l'évaluation via `emotyc_predict.py` :
+
+**Pipeline avec supervision humaine (recommandée) :**
+```
+annotate.py → supervise.py → XLSX validé → flatten_gold.py → emotyc_predict.py
+```
+
+```bash
+# Aplatir le gold label supervisé
+python scripts/flatten_gold.py \
+    --input /chemin/vers/annotations_validees.xlsx \
+    --output outputs/homophobie/annotations_gold_flat.xlsx
+
+# Inférence EMOTYC
+python scripts/emotyc_predict.py \
+    --xlsx outputs/homophobie/annotations_gold_flat.xlsx \
+    --out_dir outputs/homophobie/emotyc_eval
+```
+
+**Pipeline sans supervision (évaluation rapide) :**
+```
+annotate.py → aggregate.py → emotyc_predict.py
+```
+
+```bash
+# Agréger les annotations LLM (XLSX directement compatible emotyc_predict.py)
+python scripts/aggregate.py \
+    --input outputs/homophobie/run001.jsonl \
+    --output outputs/homophobie/run001_aggregated.xlsx
+
+# Inférence EMOTYC
+python scripts/emotyc_predict.py \
+    --xlsx outputs/homophobie/run001_aggregated.xlsx \
+    --out_dir outputs/homophobie/emotyc_eval
+```
+
+### 4. EMOTYC
+
+```python
+    python scripts/emotyc_predict.py \
+        --xlsx outputs/homophobie/annotations_validees.xlsx \
+        --out_dir outputs/homophobie/emotyc_eval
+
+    # Sans seuils optimisés (seuil 0.5 pour tout)
+    python scripts/emotyc_predict.py \
+        --xlsx outputs/homophobie/annotations_validees.xlsx \
+        --out_dir outputs/homophobie/emotyc_eval \
+        --no-optimized-thresholds
+
+    # Avec contexte voisin (i-1, i, i+1)
+    python scripts/emotyc_predict.py \
+        --xlsx outputs/homophobie/annotations_validees.xlsx \
+        --out_dir outputs/homophobie/emotyc_eval \
+        --use-context
+```
+
+## Gestion des outputs
+
+- Le fichier `.jsonl` est l'artefact principal (append-only)
+- Les JSON individuels (`items/`) sont temporaires et **supprimés automatiquement** en fin de run
+- Le dossier `items/` est dans `.gitignore`
+
+## Émotions annotées (11)
+
+Colère · Dégoût · Joie · Peur · Surprise · Tristesse · Admiration · Culpabilité · Embarras · Fierté · Jalousie

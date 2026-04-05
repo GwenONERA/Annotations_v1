@@ -1,0 +1,20 @@
+# Core
+boto3
+pandas
+openpyxl
+
+# Comparaison / visualisation
+scikit-learn
+matplotlib
+seaborn
+numpy
+
+# Supervision via Argilla (HuggingFace Space)
+argilla
+
+# HuggingFace provider
+openai
+
+# EMOTYC local inference
+torch
+transformers
