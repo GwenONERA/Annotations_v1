@@ -1,0 +1,29 @@
+============================================================
+idx: 17  |  reviewed: True
+Locuteur: brice  |  Role: bully
+Message: en même temps vu comme il est gros
+
+  Span: vu comme il est gros
+  Categorie: Dégoût / Mépris
+  Mode: Montrée
+  Justification: L'expression péjorative 'gros' utilisée comme justification implicite d'un traitement négatif traduit une attitude de mépris/dégoût envers la victime.
+
+============================================================
+idx: 189  |  reviewed: True
+Locuteur: julien  |  Role: bully_support
+Message: port eplainte tu va devoir marcher pdnt encore 10 ans pour arriver au poste de police tlm t gros
+
+  Span: tu va devoir marcher pdnt encore 10 ans pour arriver au poste de police
+  Categorie: Mépris
+  Mode: Montrée
+  Justification: La formulation moqueuse et hyperbolique sur le poids de la victime exprime un mépris affiché via une connotation péjorative et une raillerie.
+
+============================================================
+idx: 350  |  reviewed: True
+Locuteur: Paul-Victime  |  Role: victim
+Message: Et toi de te faire pousser quelques neuronnes julien.. Sérieux vous êtes même pas capable de voir que vous vous comportez comme des merde
+
+  Span: te faire pousser quelques neuronnes
+  Categorie: Colère / Mépris
+  Mode: Montrée
+  Justification: L'injonction ironique et péjorative à faire pousser des neurones exprime du mépris et de l'indignation envers Julien.

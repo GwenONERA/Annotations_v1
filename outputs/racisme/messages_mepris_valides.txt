@@ -1,0 +1,51 @@
+============================================================
+id: 5_d0  |  decision: R1
+Locuteur: <Pierre-Soutien-Harceleur>  |  Rôle: bully_support
+Message: c'est pas dans son pays qu'elle en aura :') :')
+
+  Span: c'est pas dans son pays qu'elle en aura :') :')
+  Catégorie: Mépris
+  Mode: Suggérée
+  Justification: La remarque sous-entend que la victime, renvoyée à 'son pays', est dans une situation de pauvreté ou d'infériorité, ce qui est prototypiquement associé à une expression de mépris raciste.
+
+============================================================
+id: 106_d1  |  decision: Autre
+Locuteur: <Pauline-Harceleur>  |  Rôle: bully
+Message: bon fatima retournes chez tamr pleurer
+
+  Span: pleurer
+  Catégorie: Mépris
+  Mode: Comportementale
+  Justification: Renvoyer la victime à l'acte de pleurer est une attitude discursive de mépris visant à ridiculiser et dévaloriser la personne ciblée.
+  Correction catégories: [array(['Tristesse'], dtype=object)]
+  Correction mode: ['Désignée']
+
+============================================================
+id: 114_d0  |  decision: R1
+Locuteur: <Nicolas-Soutien-Harceleur>  |  Rôle: bully_support
+Message: ecrit francais et tu viendra me parler culture' mdrr
+
+  Span: ecrit francais et tu viendra me parler culture'
+  Catégorie: Colère / Mépris
+  Mode: Comportementale
+  Justification: L'injonction agressive et condescendante de maîtriser le français avant de parler de culture constitue une attitude discursive de défi et de mépris envers l'interlocuteur.
+
+============================================================
+id: 146_d1  |  decision: R1
+Locuteur: <Pauline-Harceleur>  |  Rôle: bully
+Message: fatima t une grosse pute a part envoyez des nudes tu f rien
+
+  Span: a part envoyez des nudes tu f rien
+  Catégorie: Mépris
+  Mode: Montrée
+  Justification: Formulation dévalorisante et agressive qui exprime un mépris total envers la cible, réduisant sa valeur à un acte sexuel.
+
+============================================================
+id: 192_d0  |  decision: R1
+Locuteur: <Pauline-Harceleur>  |  Rôle: bully
+Message: si l'unitilité etait une personne
+
+  Span: si l'unitilité etait une personne
+  Catégorie: Mépris
+  Mode: Montrée
+  Justification: La formule rhétorique 'si l'inutilité était une personne' est une insulte implicite exprimant du mépris envers la victime via une connotation fortement péjorative.
