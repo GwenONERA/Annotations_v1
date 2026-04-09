@@ -1,0 +1,14 @@
+[
+  {
+    "idx": 26,
+    "id": "26",
+    "text_raw": "elle s'affiche si elle veut",
+    "full_transcription": "vous êtes des breles",
+    "classification": "probable_typo",
+    "raw_word": "elle",
+    "trans_word": "breles",
+    "char": "l",
+    "position": 1,
+    "verdict": "aucun"
+  }
+]
