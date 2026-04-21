@@ -441,7 +441,7 @@ def load_dataset(base_dir: Path, spec: dict) -> dict:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate one HTML visualization file for the 4 annotated corpora.")
-    parser.add_argument("--output", type=Path, default=Path("outputs/viz_all_corpora.html"), help="Output HTML path, relative to /home/gwen/Annotations_v1 unless absolute.")
+    parser.add_argument("--output", type=Path, default=Path("outputs/viz_all_corpora_unified_v2.html"), help="Output HTML path, relative to /home/gwen/Annotations_v1 unless absolute.")
     return parser.parse_args()
 
 
