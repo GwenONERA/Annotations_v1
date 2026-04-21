@@ -234,6 +234,25 @@ def legend_html() -> str:
     return '<div class="legend">' + " ".join(items) + "</div>"
 
 
+def render_toc(datasets: list[dict]) -> str:
+    links = []
+    for dataset in datasets:
+        links.append(
+            f'<a class="toc-link" href="#section-{dataset["key"]}">'
+            f'{html.escape(dataset["label"])}'
+            f'<span class="section-counter">{dataset["stats"]["total"]}</span>'
+            f'</a>'
+        )
+    return (
+        '<nav class="toc">'
+        '<h3>Navigation rapide</h3>'
+        '<div class="toc-links">'
+        + ''.join(links)
+        + '</div>'
+        '</nav>'
+    )
+
+
 def filter_bar_html(total: int) -> str:
     mode_checks = []
     for mode in MODES:
@@ -304,7 +323,30 @@ HTML_HEADER = """<!DOCTYPE html>
   }}
   .overview-card, .stat-box {{ padding: 14px 16px; }}
   .overview-card strong {{ display: block; font-size: 22px; margin-top: 4px; }}
-  .dataset-section {{ margin-top: 20px; overflow: hidden; }}
+  .toc {{
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-soft);
+    padding: 12px 14px;
+    margin: 10px 0 14px;
+  }}
+  .toc h3 {{ margin-bottom: 10px; }}
+  .toc-links {{ display: flex; gap: 8px; flex-wrap: wrap; }}
+  .toc-link {{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #cfd6e6;
+    border-radius: 999px;
+    background: #fff;
+    color: #28457d;
+    text-decoration: none;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }}
+  .toc-link:hover {{ background: #eef3ff; }}
+  .dataset-section {{ margin-top: 20px; overflow: hidden; scroll-margin-top: 96px; }}
   .dataset-header {{
     padding: 14px 16px;
     border-bottom: 1px solid var(--border);
@@ -533,6 +575,7 @@ def generate_combined_html(datasets: list[dict], out_path: Path) -> None:
         '<div class="overview-card"><span>Fichier de sortie</span>'
         f'<strong>{html.escape(out_path.name)}</strong></div>',
         '</div>',
+        render_toc(datasets),
         '<div class="stats-grid">',
         '<div class="stat-box"><h3>Distribution globale des modes</h3>',
         bar_chart_html(overall_stats["mode_counts"], MODE_COLORS_SOLID),
