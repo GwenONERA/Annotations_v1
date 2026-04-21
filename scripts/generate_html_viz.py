@@ -56,7 +56,6 @@ HTML_HEADER = """\
 <style>
   body {{ font-family: "Segoe UI", Arial, sans-serif; font-size: 13.5px; line-height: 1.5; margin: 20px; color: #222; background: #fafafa; }}
   h1 {{ font-size: 22px; margin-bottom: 4px; }}
-  h2 {{ font-size: 18px; margin: 24px 0 12px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }}
   .top-controls {{ margin: 16px 0 24px; display: flex; gap: 12px; flex-wrap: wrap; }}
   .btn {{ padding: 8px 14px; border: 1px solid #ccc; background: #fff; cursor: pointer; border-radius: 4px; font-size: 13px; font-weight: 500; transition: 0.2s; }}
   .btn:hover {{ background: #f0f0f0; }}
@@ -78,11 +77,6 @@ HTML_HEADER = """\
   .filter-row label {{ font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 4px; user-select: none; }}
   .search-row {{ display: flex; justify-content: space-between; align-items: center; margin-top: 6px; border-top: 1px solid #eee; padding-top: 12px; }}
   #search-box {{ font-size: 13px; padding: 6px 12px; width: 350px; border: 1px solid #ccc; border-radius: 4px; }}
-  .quick-nav {{ background: #fff; border: 1px solid #bce8f1; padding: 16px 20px; border-radius: 6px; margin: 16px 0; }}
-  .quick-nav strong {{ font-size: 13px; color: #333; }}
-  .quick-nav-links {{ display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }}
-  .quick-nav a {{ text-decoration: none; color: #0044aa; background: #eef5ff; border: 1px solid #cce0ff; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; }}
-  .quick-nav a:hover {{ background: #dfeeff; }}
   .corpus-section {{ margin-bottom: 20px; }}
   .section-meta {{ font-size: 13px; color: #666; margin: -4px 0 12px; }}
   .doc-container {{ background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; margin-bottom: 12px; padding: 12px 16px; }}
@@ -314,12 +308,6 @@ def legend_html() -> str:
     return '<div class="legend">' + ' '.join(items) + '</div>'
 
 
-def quick_nav_html(datasets: list[dict]) -> str:
-    links = []
-    for dataset in datasets:
-        links.append(f'<a href="#section-{dataset["key"]}">{html.escape(dataset["label"])} ({dataset["stats"]["total"]})</a>')
-    return '<div class="quick-nav"><strong>Navigation rapide</strong><div class="quick-nav-links">' + ''.join(links) + '</div></div>'
-
 
 def filter_html(total: int) -> str:
     corpus_checks = []
@@ -354,7 +342,7 @@ def filter_html(total: int) -> str:
     )
 
 
-def render_record(dataset: dict, row: dict, index: int) -> str:
+def render_record(dataset: dict, row: dict) -> str:
     text = str(row.get("text") or row.get("TEXT") or "")
     highlighted = highlight_text_with_spans(text, row.get("spans_json"))
     active_modes = get_active_modes(row)
@@ -362,7 +350,7 @@ def render_record(dataset: dict, row: dict, index: int) -> str:
     name = html.escape(str(row.get("NAME") or ""))
     role = html.escape(str(row.get("ROLE") or ""))
 
-    meta_parts = [f'#{index}']
+    meta_parts = []
     if name:
         meta_parts.append(name)
     if role:
@@ -386,12 +374,11 @@ def render_record(dataset: dict, row: dict, index: int) -> str:
 def render_dataset_section(dataset: dict) -> str:
     stats = dataset["stats"]
     parts = [
-        f'<section class="corpus-section" id="section-{dataset["key"]}" data-corpus="{dataset["key"]}">',
-        f'<h2>{html.escape(dataset["label"])} </h2>',
+        f'<section class="corpus-section" data-corpus="{dataset["key"]}">',
         f'<div class="section-meta">Affichés: <span class="section-shown-count">{stats["total"]}</span> / {stats["total"]} textes avec au moins une émotion annotée</div>',
     ]
-    for index, record in enumerate(dataset["records"], start=1):
-        parts.append(render_record(dataset, record, index))
+    for record in dataset["records"]:
+        parts.append(render_record(dataset, record))
     parts.append('</section>')
     return '\n'.join(parts)
 
@@ -415,7 +402,6 @@ def generate_combined_html(datasets: list[dict], out_path: Path) -> None:
         '</div>',
         '</div>',
         legend_html(),
-        quick_nav_html(datasets),
         filter_html(overall_stats["total"]),
     ]
     for dataset in datasets:
