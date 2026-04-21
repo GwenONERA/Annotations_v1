@@ -1,12 +1,7 @@
-"""Generate one HTML visualization file aggregating the 4 annotated corpora.
-
-The output HTML contains:
-- one global overview across all corpora
-- one section per corpus
-- mode / corpus / text filters shared across the whole page
-- inline span highlighting for annotated expression modes
-
-Only rows with Emo == 1 are kept.
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Génère un fichier HTML unique pour les 4 corpus XLSX avec la même structure UI
+que /home/gwen/ExpressionEmotionnelle/scripts/html_annotations.py.
 """
 
 from __future__ import annotations
@@ -18,7 +13,6 @@ from collections import Counter
 from pathlib import Path
 
 import openpyxl
-
 
 MODE_COLORS = {
     "Désignée": "rgba(40, 80, 160, 0.30)",
@@ -32,22 +26,11 @@ MODE_COLORS_SOLID = {
     "Suggérée": "rgb(180, 100, 20)",
     "Montrée": "rgb(120, 50, 140)",
 }
-MODES = list(MODE_COLORS)
+MODES = list(MODE_COLORS.keys())
 EMOTION_LABELS = [
-    "Colère",
-    "Dégoût",
-    "Joie",
-    "Peur",
-    "Surprise",
-    "Tristesse",
-    "Admiration",
-    "Culpabilité",
-    "Embarras",
-    "Fierté",
-    "Jalousie",
-    "Autre",
+    "Colère", "Dégoût", "Joie", "Peur", "Surprise", "Tristesse",
+    "Admiration", "Culpabilité", "Embarras", "Fierté", "Jalousie", "Autre",
 ]
-
 COL_RENAME = {
     "Designee": "Désignée",
     "Montree": "Montrée",
@@ -57,33 +40,142 @@ COL_RENAME = {
     "Culpabilite": "Culpabilité",
     "Fierte": "Fierté",
 }
-
 DATASETS = [
-    {
-        "key": "homophobie",
-        "label": "Homophobie",
-        "path": "outputs/homophobie_annotations_gold_flat_updated.xlsx",
-    },
-    {
-        "key": "obesite",
-        "label": "Obésité",
-        "path": "outputs/obésité_annotations_gold_flat_updated.xlsx",
-    },
-    {
-        "key": "racisme",
-        "label": "Racisme",
-        "path": "outputs/racisme_annotations_gold_flat_updated.xlsx",
-    },
-    {
-        "key": "religion",
-        "label": "Religion",
-        "path": "outputs/religion_annotations_gold_flat_updated.xlsx",
-    },
+    {"key": "homophobie", "label": "Homophobie", "path": "outputs/homophobie_annotations_gold_flat_updated.xlsx"},
+    {"key": "obesite", "label": "Obésité", "path": "outputs/obésité_annotations_gold_flat_updated.xlsx"},
+    {"key": "racisme", "label": "Racisme", "path": "outputs/racisme_annotations_gold_flat_updated.xlsx"},
+    {"key": "religion", "label": "Religion", "path": "outputs/religion_annotations_gold_flat_updated.xlsx"},
 ]
+
+HTML_HEADER = """\
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<title>{title}</title>
+<style>
+  body {{ font-family: "Segoe UI", Arial, sans-serif; font-size: 13.5px; line-height: 1.5; margin: 20px; color: #222; background: #fafafa; }}
+  h1 {{ font-size: 22px; margin-bottom: 4px; }}
+  h2 {{ font-size: 18px; margin: 24px 0 12px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }}
+  .top-controls {{ margin: 16px 0 24px; display: flex; gap: 12px; flex-wrap: wrap; }}
+  .btn {{ padding: 8px 14px; border: 1px solid #ccc; background: #fff; cursor: pointer; border-radius: 4px; font-size: 13px; font-weight: 500; transition: 0.2s; }}
+  .btn:hover {{ background: #f0f0f0; }}
+  .btn.active {{ background: #d0e0ff; border-color: #80a0e0; }}
+  #stats-section {{ display: none; }}
+  #stats-section.visible {{ display: block; }}
+  .stats-grid {{ display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; }}
+  .stat-box {{ background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 14px 20px; min-width: 250px; flex: 1; }}
+  .stat-box h3 {{ margin: 0 0 12px; font-size: 14px; color: #444; }}
+  .bar-row {{ display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 12px; }}
+  .bar-label {{ width: 110px; text-align: right; font-weight: 500; color: #555; }}
+  .bar {{ height: 12px; border-radius: 2px; min-width: 2px; }}
+  .legend {{ display: flex; gap: 16px; margin: 16px 0; font-size: 13px; align-items: center; flex-wrap: wrap; }}
+  .legend-item {{ display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }}
+  .legend-swatch {{ display: inline-block; width: 16px; height: 16px; border-radius: 4px; }}
+  #filter-container {{ background: #fff; border: 1px solid #bce8f1; padding: 16px 20px; border-radius: 6px; margin: 16px 0; display: flex; flex-direction: column; gap: 12px; }}
+  .filter-row {{ display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }}
+  .filter-row strong {{ font-size: 13px; min-width: 80px; color: #333; }}
+  .filter-row label {{ font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 4px; user-select: none; }}
+  .search-row {{ display: flex; justify-content: space-between; align-items: center; margin-top: 6px; border-top: 1px solid #eee; padding-top: 12px; gap: 14px; flex-wrap: wrap; }}
+  #search-box {{ font-size: 13px; padding: 6px 12px; width: 350px; border: 1px solid #ccc; border-radius: 4px; }}
+  .quick-nav {{ background: #fff; border: 1px solid #bce8f1; padding: 16px 20px; border-radius: 6px; margin: 16px 0; }}
+  .quick-nav-links {{ display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }}
+  .quick-nav a {{ text-decoration: none; color: #0044aa; background: #eef5ff; border: 1px solid #cce0ff; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; }}
+  .quick-nav a:hover {{ background: #dfeeff; }}
+  .corpus-section {{ margin-bottom: 20px; }}
+  .section-meta {{ font-size: 13px; color: #666; margin: -4px 0 12px; }}
+  .doc-container {{ background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; margin-bottom: 12px; padding: 12px 16px; }}
+  .doc-header {{ margin-bottom: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }}
+  .doc-corpus-badge {{ display: none; background: #e0e0e0; color: #333; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; }}
+  body.show-corpus .doc-corpus-badge {{ display: inline-block; }}
+  .doc-meta {{ background: #eef5ff; border: 1px solid #cce0ff; padding: 3px 8px; border-radius: 4px; color: #0044aa; font-size: 12px; font-weight: 600; }}
+  .hl {{ border-radius: 2px; padding: 2px 0; }}
+  .doc-text {{ white-space: pre-wrap; color: #111; line-height: 1.6; font-size: 14px; }}
+</style>
+</head>
+<body>
+<h1>{title}</h1>
+<p style="font-size:13px;color:#666;">{subtitle}</p>
+<div class="top-controls">
+  <button id="btn-toggle-stats" class="btn">Afficher les statistiques</button>
+  <button id="btn-toggle-corpus" class="btn">Afficher les noms de corpus</button>
+</div>
+"""
+
+HTML_FOOTER = """\
+<script>
+document.getElementById('btn-toggle-stats').addEventListener('click', function() {
+  var sec = document.getElementById('stats-section');
+  sec.classList.toggle('visible');
+  this.classList.toggle('active');
+  this.textContent = sec.classList.contains('visible') ? "Masquer les statistiques" : "Afficher les statistiques";
+});
+
+document.getElementById('btn-toggle-corpus').addEventListener('click', function() {
+  document.body.classList.toggle('show-corpus');
+  this.classList.toggle('active');
+  this.textContent = document.body.classList.contains('show-corpus') ? "Masquer les noms de corpus" : "Afficher les noms de corpus";
+});
+
+function applyFilters() {
+  var modeChecks = document.querySelectorAll('.mode-filter');
+  var activeModes = [];
+  modeChecks.forEach(function(cb) { if(cb.checked) activeModes.push(cb.value); });
+
+  var emoChecks = document.querySelectorAll('.emo-filter');
+  var activeEmos = [];
+  emoChecks.forEach(function(cb) { if(cb.checked) activeEmos.push(cb.value); });
+
+  var corpusChecks = document.querySelectorAll('.corpus-filter');
+  var activeCorpora = [];
+  corpusChecks.forEach(function(cb) { if(cb.checked) activeCorpora.push(cb.value); });
+
+  var search = (document.getElementById('search-box') || {}).value || '';
+  search = search.toLowerCase();
+
+  var docs = document.querySelectorAll('.doc-container');
+  var shown = 0;
+
+  docs.forEach(function(doc) {
+    var modes = (doc.dataset.modes || '').split(',').filter(Boolean);
+    var emos = (doc.dataset.emos || '').split(',').filter(Boolean);
+    var corpus = doc.dataset.corpus || '';
+
+    var modeOk = activeModes.length === 0 || modes.some(function(m){ return activeModes.indexOf(m) >= 0; });
+    var emoOk = activeEmos.length === 0 || emos.some(function(e){ return activeEmos.indexOf(e) >= 0; });
+    var corpusOk = activeCorpora.length === 0 || activeCorpora.indexOf(corpus) >= 0;
+    var textOk = !search || doc.textContent.toLowerCase().indexOf(search) >= 0;
+
+    if (modeOk && emoOk && corpusOk && textOk) {
+      doc.style.display = '';
+      shown++;
+    } else {
+      doc.style.display = 'none';
+    }
+  });
+
+  document.querySelectorAll('.corpus-section').forEach(function(section) {
+    var key = section.dataset.corpus || '';
+    var corpusVisible = activeCorpora.length === 0 || activeCorpora.indexOf(key) >= 0;
+    var visibleDocs = section.querySelectorAll('.doc-container:not([style*="display: none"])').length;
+    section.style.display = (corpusVisible && visibleDocs > 0) ? '' : 'none';
+    var counter = section.querySelector('.section-shown-count');
+    if (counter) counter.textContent = visibleDocs;
+  });
+
+  document.getElementById('shown-count').textContent = shown;
+}
+
+document.querySelectorAll('.mode-filter, .emo-filter, .corpus-filter').forEach(function(cb){ cb.addEventListener('change', applyFilters); });
+var sb = document.getElementById('search-box');
+if(sb) sb.addEventListener('input', applyFilters);
+</script>
+</body>
+</html>
+"""
 
 
 def normalise_record(row: dict) -> dict:
-    """Rename legacy unaccented columns and normalize span payload."""
     out = {COL_RENAME.get(k, k): v for k, v in row.items()}
     if "spans_json" not in out and "_span_details" in out:
         out["spans_json"] = out["_span_details"]
@@ -139,30 +231,25 @@ def compute_stats(records: list[dict]) -> dict:
 
 
 def highlight_text_with_spans(text: str, spans_json_str: str | None) -> str:
-    """Return escaped HTML with highlighted spans. Overlaps are supported."""
     if not text:
         return ""
     if not spans_json_str or spans_json_str == "[]":
         return html.escape(text)
-
     try:
         spans = json.loads(spans_json_str)
     except (json.JSONDecodeError, TypeError):
         return html.escape(text)
-
     if not spans:
         return html.escape(text)
 
-    intervals: list[tuple[int, int, str]] = []
+    intervals = []
     text_lower = text.lower()
-
     for span in spans:
         span_text = (span or {}).get("span_text", "")
         mode = (span or {}).get("mode", "")
         if not span_text or mode not in MODE_COLORS:
             continue
-
-        idx = text_lower.find(span_text.lower())
+        idx = text_lower.find(str(span_text).lower())
         if idx >= 0:
             intervals.append((idx, idx + len(span_text), mode))
 
@@ -174,40 +261,34 @@ def highlight_text_with_spans(text: str, spans_json_str: str | None) -> str:
         for pos in range(start, min(end, len(text))):
             char_modes[pos].add(mode)
 
-    chunks: list[str] = []
+    parts = []
     i = 0
     while i < len(text):
         modes = frozenset(char_modes[i])
         j = i + 1
         while j < len(text) and frozenset(char_modes[j]) == modes:
             j += 1
-
         chunk = html.escape(text[i:j])
         if modes:
             sorted_modes = sorted(modes)
-            background = MODE_COLORS[sorted_modes[0]]
-            border_bottom = ""
+            bg = MODE_COLORS[sorted_modes[0]]
+            border = ""
             if len(sorted_modes) > 1:
-                border_bottom = f"border-bottom:2px solid {MODE_COLORS_SOLID[sorted_modes[1]]};"
+                border = f"border-bottom:2px solid {MODE_COLORS_SOLID[sorted_modes[1]]};"
             title = html.escape(" + ".join(sorted_modes), quote=True)
-            chunks.append(
-                f'<span class="hl" style="background:{background};{border_bottom}" title="{title}">{chunk}</span>'
-            )
+            parts.append(f'<span class="hl" style="background:{bg};{border}" title="{title}">{chunk}</span>')
         else:
-            chunks.append(chunk)
+            parts.append(chunk)
         i = j
-
-    return "".join(chunks)
+    return "".join(parts)
 
 
 def bar_chart_html(counts: dict, color_map: dict | None = None, max_width: int = 220) -> str:
     if not counts:
-        return '<div class="empty-note">Aucune donnée.</div>'
-
+        return ""
     max_val = max(counts.values(), default=0)
     if max_val == 0:
-        return '<div class="empty-note">Aucune occurrence.</div>'
-
+        return ""
     parts = []
     for label, value in sorted(counts.items(), key=lambda item: (-item[1], item[0])):
         width = int(value / max_val * max_width) if max_val else 0
@@ -226,356 +307,101 @@ def legend_html() -> str:
     items = []
     for mode, color in MODE_COLORS_SOLID.items():
         items.append(
-            f'<span class="legend-item">'
-            f'<span class="legend-swatch" style="background:{color};"></span>'
-            f'{html.escape(mode)}'
-            f'</span>'
+            f'<span class="legend-item"><span class="legend-swatch" style="background:{color};"></span>{html.escape(mode)}</span>'
         )
-    return '<div class="legend">' + " ".join(items) + "</div>"
+    return '<div class="legend">' + ' '.join(items) + '</div>'
 
 
-def render_toc(datasets: list[dict]) -> str:
+def quick_nav_html(datasets: list[dict]) -> str:
     links = []
     for dataset in datasets:
-        links.append(
-            f'<a class="toc-link" href="#section-{dataset["key"]}">'
-            f'{html.escape(dataset["label"])}'
-            f'<span class="section-counter">{dataset["stats"]["total"]}</span>'
-            f'</a>'
-        )
-    return (
-        '<nav class="toc">'
-        '<h3>Navigation rapide</h3>'
-        '<div class="toc-links">'
-        + ''.join(links)
-        + '</div>'
-        '</nav>'
-    )
+        links.append(f'<a href="#section-{dataset["key"]}">{html.escape(dataset["label"])} ({dataset["stats"]["total"]})</a>')
+    return '<div class="quick-nav"><strong>Navigation rapide</strong><div class="quick-nav-links">' + ''.join(links) + '</div></div>'
 
 
-def filter_bar_html(total: int) -> str:
-    mode_checks = []
+def filter_html(total: int) -> str:
+    mode_filters = []
     for mode in MODES:
-        mode_checks.append(
-            f'<label style="color:{MODE_COLORS_SOLID[mode]};font-weight:600;">'
-            f'<input type="checkbox" class="mode-filter" value="{html.escape(mode, quote=True)}" checked> {html.escape(mode)}'
-            f'</label>'
+        mode_filters.append(
+            f'<label style="color:{MODE_COLORS_SOLID[mode]};font-weight:600;"><input type="checkbox" class="mode-filter" value="{html.escape(mode, quote=True)}" checked> {html.escape(mode)}</label>'
         )
 
-    corpus_checks = []
+    emo_filters = []
+    for emo in EMOTION_LABELS:
+        emo_filters.append(
+            f'<label><input type="checkbox" class="emo-filter" value="{html.escape(emo, quote=True)}" checked> {html.escape(emo)}</label>'
+        )
+
+    corpus_filters = []
     for dataset in DATASETS:
-        corpus_checks.append(
-            f'<label class="corpus-filter-label">'
-            f'<input type="checkbox" class="corpus-filter" value="{dataset["key"]}" checked> {html.escape(dataset["label"])}'
-            f'</label>'
+        corpus_filters.append(
+            f'<label><input type="checkbox" class="corpus-filter" value="{dataset["key"]}" checked> {html.escape(dataset["label"])} </label>'
         )
 
     return (
-        '<div id="filter-bar">'
-        '<div class="filter-group"><strong>Corpus</strong>' + "".join(corpus_checks) + '</div>'
-        '<div class="filter-group"><strong>Modes</strong>' + "".join(mode_checks) + '</div>'
-        '<div class="filter-group filter-group-tools">'
-        '<button id="toggle-names" class="toggle-btn" title="Masquer/afficher les noms">Noms</button>'
-        '<button id="toggle-roles" class="toggle-btn" title="Masquer/afficher les rôles">Rôles</button>'
-        f'<input type="text" id="search-box" placeholder="Rechercher dans les textes…">'
-        f'<span class="filter-counter">Affichés: <span id="shown-count">{total}</span> / {total}</span>'
+        '<div id="filter-container">'
+        '<div class="filter-row"><strong>Corpus</strong>' + ''.join(corpus_filters) + '</div>'
+        '<div class="filter-row"><strong>Modes</strong>' + ''.join(mode_filters) + '</div>'
+        '<div class="filter-row"><strong>Émotions</strong>' + ''.join(emo_filters) + '</div>'
+        '<div class="search-row">'
+        '<input type="text" id="search-box" placeholder="Rechercher dans les textes…">'
+        f'<span style="font-size:12px;color:#777;">Affichés: <span id="shown-count">{total}</span> / {total}</span>'
         '</div>'
         '</div>'
     )
 
 
-HTML_HEADER = """<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>{title}</title>
-<style>
-  :root {{
-    --border: #dfdfdf;
-    --muted: #707070;
-    --bg-soft: #f7f7f8;
-    --accent-soft: #f0f4ff;
-  }}
-  * {{ box-sizing: border-box; }}
-  body {{
-    font-family: "Segoe UI", Arial, sans-serif;
-    font-size: 12px;
-    line-height: 1.35;
-    margin: 24px;
-    color: #222;
-    background: #fff;
-  }}
-  h1 {{ font-size: 24px; margin: 0 0 6px; }}
-  h2 {{ font-size: 18px; margin: 0; }}
-  h3 {{ font-size: 13px; margin: 0 0 8px; }}
-  p.subtitle {{ margin: 0 0 18px; color: var(--muted); max-width: 1100px; }}
-  .overview-grid, .stats-grid {{
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 16px;
-  }}
-  .overview-grid {{ margin-bottom: 18px; }}
-  .stat-box, .overview-card, .dataset-section {{
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: #fff;
-  }}
-  .overview-card, .stat-box {{ padding: 14px 16px; }}
-  .overview-card strong {{ display: block; font-size: 22px; margin-top: 4px; }}
-  .toc {{
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: var(--bg-soft);
-    padding: 12px 14px;
-    margin: 10px 0 14px;
-  }}
-  .toc h3 {{ margin-bottom: 10px; }}
-  .toc-links {{ display: flex; gap: 8px; flex-wrap: wrap; }}
-  .toc-link {{
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    border: 1px solid #cfd6e6;
-    border-radius: 999px;
-    background: #fff;
-    color: #28457d;
-    text-decoration: none;
-    padding: 5px 10px;
-    font-size: 11px;
-    font-weight: 600;
-  }}
-  .toc-link:hover {{ background: #eef3ff; }}
-  .dataset-section {{ margin-top: 20px; overflow: hidden; scroll-margin-top: 96px; }}
-  .dataset-header {{
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg-soft);
-  }}
-  .dataset-header-top {{
-    display: flex;
-    gap: 12px;
-    justify-content: space-between;
-    align-items: baseline;
-    flex-wrap: wrap;
-    margin-bottom: 8px;
-  }}
-  .dataset-meta {{ color: var(--muted); font-size: 11px; }}
-  .section-body {{ padding: 14px 16px 18px; }}
-  .legend {{
-    display: flex;
-    gap: 14px;
-    flex-wrap: wrap;
-    margin: 14px 0 12px;
-    font-size: 11px;
-    align-items: center;
-  }}
-  .legend-item {{ display: inline-flex; align-items: center; gap: 5px; }}
-  .legend-swatch {{ width: 14px; height: 14px; border-radius: 3px; display: inline-block; }}
-  #filter-bar {{
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    background: rgba(255, 255, 255, 0.96);
-    backdrop-filter: blur(4px);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 12px 14px;
-    margin: 14px 0 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }}
-  .filter-group {{ display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }}
-  .filter-group label {{ font-size: 11px; cursor: pointer; }}
-  .corpus-filter-label {{ color: #333; font-weight: 600; }}
-  .filter-group-tools {{ justify-content: space-between; }}
-  .filter-group-tools input {{ margin-left: auto; }}
-  #search-box {{ font-size: 11px; padding: 5px 8px; width: 280px; max-width: 100%; }}
-  .toggle-btn {{
-    font-size: 11px;
-    padding: 4px 10px;
-    border: 1px solid #b9b9b9;
-    border-radius: 6px;
-    cursor: pointer;
-    background: #fff;
-    color: #444;
-  }}
-  .toggle-btn.active {{ background: #ececec; border-color: #999; }}
-  .filter-counter {{ font-size: 11px; color: var(--muted); }}
-  .bar-row {{ display: flex; align-items: center; gap: 6px; margin: 2px 0; font-size: 11px; }}
-  .bar-label {{ width: 110px; text-align: right; color: #444; }}
-  .bar {{ height: 12px; border-radius: 3px; min-width: 2px; }}
-  .empty-note {{ color: var(--muted); font-style: italic; }}
-  .text-list {{ margin-top: 14px; }}
-  .text-row {{
-    padding: 8px 0;
-    border-bottom: 1px solid #ececec;
-  }}
-  .text-row:last-child {{ border-bottom: 0; }}
-  .text-head {{
-    display: flex;
-    gap: 8px;
-    align-items: baseline;
-    flex-wrap: wrap;
-    margin-bottom: 3px;
-  }}
-  .text-idx {{ color: #999; font-size: 10px; min-width: 34px; }}
-  .corpus-badge {{
-    display: inline-block;
-    font-size: 10px;
-    font-weight: 700;
-    background: var(--accent-soft);
-    color: #28457d;
-    padding: 2px 7px;
-    border-radius: 999px;
-  }}
-  .char-name {{ font-size: 11px; font-weight: 700; }}
-  .char-role {{ color: var(--muted); font-size: 10px; }}
-  .text-content {{ font-size: 12px; }}
-  .hl {{ border-radius: 3px; padding: 0 1px; }}
-  .meta {{ color: var(--muted); font-size: 10px; margin-left: 6px; }}
-  .hide-names .char-name {{ display: none; }}
-  .hide-roles .char-role {{ display: none; }}
-  .section-counter {{ font-size: 11px; color: var(--muted); }}
-</style>
-</head>
-<body>
-<h1>{title}</h1>
-<p class="subtitle">{subtitle}</p>
-"""
-
-HTML_FOOTER = """<script>
-function applyFilters() {
-  const activeModes = Array.from(document.querySelectorAll('.mode-filter:checked')).map(cb => cb.value);
-  const activeCorpora = Array.from(document.querySelectorAll('.corpus-filter:checked')).map(cb => cb.value);
-  const search = (document.getElementById('search-box')?.value || '').toLowerCase();
-
-  let shown = 0;
-  document.querySelectorAll('.dataset-section').forEach(section => {
-    let sectionShown = 0;
-    section.querySelectorAll('.text-row').forEach(row => {
-      const rowModes = (row.dataset.modes || '').split(',').filter(Boolean);
-      const rowCorpus = row.dataset.corpus || '';
-      const modeOk = activeModes.length === 0 || activeModes.some(mode => rowModes.includes(mode));
-      const corpusOk = activeCorpora.length === 0 || activeCorpora.includes(rowCorpus);
-      const textOk = !search || row.textContent.toLowerCase().includes(search);
-      const visible = modeOk && corpusOk && textOk;
-
-      row.style.display = visible ? '' : 'none';
-      if (visible) {
-        shown += 1;
-        sectionShown += 1;
-      }
-    });
-
-    section.style.display = sectionShown ? '' : 'none';
-    const counter = section.querySelector('.dataset-shown-count');
-    if (counter) counter.textContent = sectionShown;
-  });
-
-  const globalCounter = document.getElementById('shown-count');
-  if (globalCounter) globalCounter.textContent = shown;
-}
-
-document.querySelectorAll('.mode-filter, .corpus-filter').forEach(cb => cb.addEventListener('change', applyFilters));
-document.getElementById('search-box')?.addEventListener('input', applyFilters);
-document.getElementById('toggle-names')?.addEventListener('click', function() {
-  document.body.classList.toggle('hide-names');
-  this.classList.toggle('active');
-});
-document.getElementById('toggle-roles')?.addEventListener('click', function() {
-  document.body.classList.toggle('hide-roles');
-  this.classList.toggle('active');
-});
-applyFilters();
-</script>
-</body>
-</html>
-"""
-
-
-def render_record_row(dataset: dict, row: dict, index: int) -> str:
+def render_record(dataset: dict, row: dict, index: int) -> str:
     text = str(row.get("text") or row.get("TEXT") or "")
     highlighted = highlight_text_with_spans(text, row.get("spans_json"))
     active_modes = get_active_modes(row)
     active_emotions = get_active_emotions(row)
     name = html.escape(str(row.get("NAME") or ""))
     role = html.escape(str(row.get("ROLE") or ""))
-    emotion_text = html.escape(", ".join(active_emotions))
 
-    meta_parts = [f'<span class="corpus-badge">{html.escape(dataset["label"])} </span>']
+    meta_parts = [f'#{index}']
     if name:
-        meta_parts.append(f'<span class="char-name">{name}</span>')
+        meta_parts.append(name)
     if role:
-        meta_parts.append(f'<span class="char-role">[{role}]</span>')
+        meta_parts.append(f'[{role}]')
+    if active_emotions:
+        meta_parts.append(', '.join(active_emotions))
+
+    meta_html = ''.join(f'<span class="doc-meta">{html.escape(part)}</span>' for part in meta_parts)
 
     return (
-        f'<div class="text-row" data-corpus="{dataset["key"]}" data-modes="{html.escape(",".join(active_modes), quote=True)}">'
-        f'<div class="text-head">'
-        f'<span class="text-idx">{index}</span>'
-        f'{" ".join(meta_parts)}'
-        f'<span class="meta">[{emotion_text}]</span>'
-        f'</div>'
-        f'<div class="text-content">{highlighted}</div>'
-        f'</div>'
+        f'<div class="doc-container" data-corpus="{dataset["key"]}" data-modes="{html.escape(",".join(active_modes), quote=True)}" data-emos="{html.escape(",".join(active_emotions), quote=True)}">'
+        '<div class="doc-header">'
+        f'<span class="doc-corpus-badge">{html.escape(dataset["label"])} </span>'
+        f'{meta_html}'
+        '</div>'
+        f'<div class="doc-text">{highlighted}</div>'
+        '</div>'
     )
 
 
 def render_dataset_section(dataset: dict) -> str:
     stats = dataset["stats"]
     parts = [
-        f'<section class="dataset-section" id="section-{dataset["key"]}">',
-        '<div class="dataset-header">',
-        '<div class="dataset-header-top">',
+        f'<section class="corpus-section" id="section-{dataset["key"]}" data-corpus="{dataset["key"]}">',
         f'<h2>{html.escape(dataset["label"])} </h2>',
-        (
-            f'<div class="section-counter">Affichés: '
-            f'<span class="dataset-shown-count">{stats["total"]}</span> / {stats["total"]}</div>'
-        ),
-        '</div>',
-        f'<div class="dataset-meta">{stats["total"]} textes avec au moins une émotion annotée</div>',
-        '</div>',
-        '<div class="section-body">',
-        '<div class="stats-grid">',
-        '<div class="stat-box"><h3>Distribution des modes</h3>',
-        bar_chart_html(stats["mode_counts"], MODE_COLORS_SOLID),
-        '</div>',
-        '<div class="stat-box"><h3>Distribution des émotions</h3>',
-        bar_chart_html(stats["emo_counts"]),
-        '</div>',
-        '</div>',
-        '<div class="text-list">',
+        f'<div class="section-meta">Affichés: <span class="section-shown-count">{stats["total"]}</span> / {stats["total"]} textes avec au moins une émotion annotée</div>',
     ]
-
     for index, record in enumerate(dataset["records"], start=1):
-        parts.append(render_record_row(dataset, record, index))
-
-    parts.extend(['</div>', '</div>', '</section>'])
-    return "\n".join(parts)
+        parts.append(render_record(dataset, record, index))
+    parts.append('</section>')
+    return '\n'.join(parts)
 
 
 def generate_combined_html(datasets: list[dict], out_path: Path) -> None:
     all_records = [record for dataset in datasets for record in dataset["records"]]
     overall_stats = compute_stats(all_records)
-
     parts = [
         HTML_HEADER.format(
             title="Visualisation unifiée des annotations",
-            subtitle=(
-                "Un seul fichier HTML regroupant les 4 corpus annotés "
-                "(Homophobie, Obésité, Racisme, Religion)."
-            ),
+            subtitle="Un seul fichier HTML regroupant les 4 corpus annotés (Homophobie, Obésité, Racisme, Religion).",
         ),
-        '<div class="overview-grid">',
-        '<div class="overview-card"><span>Textes annotés</span>'
-        f'<strong>{overall_stats["total"]}</strong></div>',
-        '<div class="overview-card"><span>Corpus inclus</span>'
-        f'<strong>{len(datasets)}</strong></div>',
-        '<div class="overview-card"><span>Fichier de sortie</span>'
-        f'<strong>{html.escape(out_path.name)}</strong></div>',
-        '</div>',
-        render_toc(datasets),
+        '<div id="stats-section">',
         '<div class="stats-grid">',
         '<div class="stat-box"><h3>Distribution globale des modes</h3>',
         bar_chart_html(overall_stats["mode_counts"], MODE_COLORS_SOLID),
@@ -584,15 +410,15 @@ def generate_combined_html(datasets: list[dict], out_path: Path) -> None:
         bar_chart_html(overall_stats["emo_counts"]),
         '</div>',
         '</div>',
+        '</div>',
         legend_html(),
-        filter_bar_html(overall_stats["total"]),
+        quick_nav_html(datasets),
+        filter_html(overall_stats["total"]),
     ]
-
     for dataset in datasets:
         parts.append(render_dataset_section(dataset))
-
     parts.append(HTML_FOOTER)
-    out_path.write_text("\n".join(parts), encoding="utf-8")
+    out_path.write_text('\n'.join(parts), encoding='utf-8')
 
 
 def load_dataset(base_dir: Path, spec: dict) -> dict:
@@ -611,12 +437,7 @@ def load_dataset(base_dir: Path, spec: dict) -> dict:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate one HTML visualization file for the 4 annotated corpora.")
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=Path("outputs/viz_all_corpora.html"),
-        help="Output HTML path, relative to /home/gwen/Annotations_v1 unless absolute.",
-    )
+    parser.add_argument("--output", type=Path, default=Path("outputs/viz_all_corpora.html"), help="Output HTML path, relative to /home/gwen/Annotations_v1 unless absolute.")
     return parser.parse_args()
 
 
@@ -641,7 +462,6 @@ def main() -> None:
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     generate_combined_html(datasets, output_path)
-
     total_records = sum(dataset["stats"]["total"] for dataset in datasets)
     print(f"Generated {output_path} ({total_records} texts across {len(datasets)} corpora).")
 
