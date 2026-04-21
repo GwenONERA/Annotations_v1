@@ -154,8 +154,6 @@ function applyFilters() {
     var corpusVisible = activeCorpora.length === 0 || activeCorpora.indexOf(key) >= 0;
     var visibleDocs = section.querySelectorAll('.doc-container:not([style*="display: none"])').length;
     section.style.display = (corpusVisible && visibleDocs > 0) ? '' : 'none';
-    var counter = section.querySelector('.section-shown-count');
-    if (counter) counter.textContent = visibleDocs;
   });
 
   document.getElementById('shown-count').textContent = shown;
@@ -362,10 +360,8 @@ def render_record(dataset: dict, row: dict) -> str:
 
 
 def render_dataset_section(dataset: dict) -> str:
-    stats = dataset["stats"]
     parts = [
         f'<section class="corpus-section" data-corpus="{dataset["key"]}">',
-        f'<div class="section-meta">Affichés: <span class="section-shown-count">{stats["total"]}</span> / {stats["total"]} textes avec au moins une émotion annotée</div>',
     ]
     for record in dataset["records"]:
         parts.append(render_record(dataset, record))
