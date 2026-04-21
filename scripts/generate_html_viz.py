@@ -75,7 +75,9 @@ HTML_HEADER = """\
   #filter-container {{ background: #fff; border: 1px solid #bce8f1; padding: 16px 20px; border-radius: 6px; margin: 16px 0; display: flex; flex-direction: column; gap: 12px; }}
   .filter-row {{ display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }}
   .filter-row strong {{ font-size: 13px; min-width: 80px; color: #333; }}
-  .filter-row label {{ font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 4px; user-select: none; }}
+  .filter-row label {{ font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; user-select: none; }}
+  .filter-row input[type="checkbox"] {{ width: 13px; height: 13px; margin: 0; accent-color: #2f6fed; flex: 0 0 auto; }}
+  .filter-chip {{ background: #f7fbff; border: 1px solid #d7e7ff; padding: 4px 8px; border-radius: 4px; }}
   .search-row {{ display: flex; justify-content: space-between; align-items: center; margin-top: 6px; border-top: 1px solid #eee; padding-top: 12px; gap: 14px; flex-wrap: wrap; }}
   #search-box {{ font-size: 13px; padding: 6px 12px; width: 350px; border: 1px solid #ccc; border-radius: 4px; }}
   .quick-nav {{ background: #fff; border: 1px solid #bce8f1; padding: 16px 20px; border-radius: 6px; margin: 16px 0; }}
@@ -337,7 +339,7 @@ def filter_html(total: int) -> str:
     corpus_filters = []
     for dataset in DATASETS:
         corpus_filters.append(
-            f'<label><input type="checkbox" class="corpus-filter" value="{dataset["key"]}" checked> {html.escape(dataset["label"])} </label>'
+            f'<label class="filter-chip"><input type="checkbox" class="corpus-filter" value="{dataset["key"]}" checked> {html.escape(dataset["label"])} </label>'
         )
 
     return (
