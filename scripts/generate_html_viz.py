@@ -344,29 +344,19 @@ def filter_html(total: int) -> str:
 
 def render_record(dataset: dict, row: dict) -> str:
     text = str(row.get("text") or row.get("TEXT") or "")
-    highlighted = highlight_text_with_spans(text, row.get("spans_json"))
     active_modes = get_active_modes(row)
     active_emotions = get_active_emotions(row)
-    name = html.escape(str(row.get("NAME") or ""))
-    role = html.escape(str(row.get("ROLE") or ""))
-
-    meta_parts = []
-    if name:
-        meta_parts.append(name)
-    if role:
-        meta_parts.append(f'[{role}]')
-    if active_emotions:
-        meta_parts.append(', '.join(active_emotions))
-
-    meta_html = ''.join(f'<span class="doc-meta">{html.escape(part)}</span>' for part in meta_parts)
+    meta_parts = ([f'[{row.get("ROLE")}]'] if row.get("ROLE") else []) + active_emotions
+    meta_html = ''.join(
+        f'<span class="doc-meta">{html.escape(str(part))}</span>' for part in meta_parts
+    )
 
     return (
         f'<div class="doc-container" data-corpus="{dataset["key"]}" data-modes="{html.escape(",".join(active_modes), quote=True)}" data-emos="{html.escape(",".join(active_emotions), quote=True)}">'
         '<div class="doc-header">'
-        f'<span class="doc-corpus-badge">{html.escape(dataset["label"])} </span>'
-        f'{meta_html}'
+        f'<span class="doc-corpus-badge">{html.escape(dataset["label"])} </span>{meta_html}'
         '</div>'
-        f'<div class="doc-text">{highlighted}</div>'
+        f'<div class="doc-text">{highlight_text_with_spans(text, row.get("spans_json"))}</div>'
         '</div>'
     )
 
