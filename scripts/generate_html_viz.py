@@ -79,6 +79,7 @@ HTML_HEADER = """\
   .search-row {{ display: flex; justify-content: space-between; align-items: center; margin-top: 6px; border-top: 1px solid #eee; padding-top: 12px; gap: 14px; flex-wrap: wrap; }}
   #search-box {{ font-size: 13px; padding: 6px 12px; width: 350px; border: 1px solid #ccc; border-radius: 4px; }}
   .quick-nav {{ background: #fff; border: 1px solid #bce8f1; padding: 16px 20px; border-radius: 6px; margin: 16px 0; }}
+  .quick-nav strong {{ font-size: 13px; color: #333; }}
   .quick-nav-links {{ display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }}
   .quick-nav a {{ text-decoration: none; color: #0044aa; background: #eef5ff; border: 1px solid #cce0ff; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; }}
   .quick-nav a:hover {{ background: #dfeeff; }}
@@ -169,6 +170,7 @@ function applyFilters() {
 document.querySelectorAll('.mode-filter, .emo-filter, .corpus-filter').forEach(function(cb){ cb.addEventListener('change', applyFilters); });
 var sb = document.getElementById('search-box');
 if(sb) sb.addEventListener('input', applyFilters);
+applyFilters();
 </script>
 </body>
 </html>
