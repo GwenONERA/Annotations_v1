@@ -251,25 +251,6 @@ def highlight_text_with_spans(text: str, spans_json_str: str | None,
 
 # ── Rendu HTML ────────────────────────────────────────────────────────────────
 
-def bar_chart_html(counts: dict, color_map: dict | None = None, max_width: int = 220) -> str:
-    if not counts:
-        return ""
-    max_val = max(counts.values(), default=0)
-    if max_val == 0:
-        return ""
-    parts = []
-    for label, value in sorted(counts.items(), key=lambda item: (-item[1], item[0])):
-        width = int(value / max_val * max_width) if max_val else 0
-        color = (color_map or {}).get(label, "#6366f1")
-        parts.append(
-            f'<div class="bar-row">'
-            f'<span class="bar-label">{html.escape(label)}</span>'
-            f'<div class="bar" style="width:{width}px;background:{color};"></div>'
-            f'<span>{value}</span></div>'
-        )
-    return "\n".join(parts)
-
-
 def legend_html() -> str:
     items = []
     for mode, color in MODE_COLORS_SOLID.items():
@@ -386,7 +367,7 @@ def filter_panel_html(qual_values: dict[str, list[str]], total: int) -> str:
         )
 
     return (
-        '<div class="panel filter-panel open">'
+        '<div class="panel filter-panel">'
         '<div class="panel-header"><span class="panel-title">🔍 Filtrer</span><span class="panel-chevron">▼</span></div>'
         '<div class="panel-body">'
         # Corpus
@@ -509,20 +490,6 @@ def generate_combined_html(datasets: list[dict], out_path: Path) -> None:
         '<h1>Visualisation des annotations sur le corpus de CyberHarcèlement</h1>',
         '</div>',
         '<div class="main-content">',
-        # Top controls
-        '<div class="top-controls">',
-        '<button id="btn-toggle-stats" class="btn">Afficher les statistiques</button>',
-        '</div>',
-        # Stats
-        '<div id="stats-section">',
-        '<div class="stats-grid">',
-        '<div class="stat-box"><h3>Distribution globale des modes</h3>',
-        bar_chart_html(overall_stats["mode_counts"], MODE_COLORS_SOLID),
-        '</div>',
-        '<div class="stat-box"><h3>Distribution globale des émotions</h3>',
-        bar_chart_html(overall_stats["emo_counts"]),
-        '</div>',
-        '</div></div>',
         # Legend
         legend_html(),
         # Panels
